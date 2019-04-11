@@ -56,8 +56,21 @@ namespace klinker
         std::size_t CalculateFrameDataSize() const
         {
             assert(displayMode_ != nullptr);
-            return (std::size_t)2 *
-                displayMode_->GetWidth() * displayMode_->GetHeight();
+
+			std::size_t bpp = 0;
+
+			switch (pixelFormat_)
+			{
+			case bmdFormat8BitYUV:
+				bpp = 16;
+				break;
+
+			case bmdFormat8BitBGRA:
+				bpp = 32;
+				break;
+			}
+			
+            return (bpp * displayMode_->GetWidth() * displayMode_->GetHeight()) / 8;
         }
 
         BSTR RetrieveFormatName() const
@@ -127,12 +140,12 @@ namespace klinker
 
         #pragma region Public methods
 
-        void Start(int deviceIndex, int formatIndex)
+        void Start(int deviceIndex, int formatIndex, int pixFormat)
         {
             assert(input_ == nullptr);
             assert(displayMode_ == nullptr);
 
-            if (!InitializeInput(deviceIndex, formatIndex)) return;
+            if (!InitializeInput(deviceIndex, formatIndex, (BMDPixelFormat)pixFormat)) return;
 
             ShouldOK(input_->StartStreams());
         }
@@ -220,30 +233,11 @@ namespace klinker
             // Change the video input format as notified.
             input_->PauseStreams();
 
-			IDeckLinkDisplayMode* displayMode = NULL;
-			BMDDisplayModeSupport support;
-			bool supported = input_->DoesSupportVideoMode(displayMode_->GetDisplayMode(),
-				bmdFormat8BitYUV,
-				bmdVideoInputEnableFormatDetection, &support, &displayMode);
-
-
-			if (supported)
-			{
-				input_->EnableVideoInput(
-					displayMode_->GetDisplayMode(),
-					bmdFormat8BitYUV,
-					bmdVideoInputEnableFormatDetection
-				);
-			}
-			else
-			{
-				input_->EnableVideoInput(
-					displayMode_->GetDisplayMode(),
-					bmdFormat8BitBGRA,
-					bmdVideoInputEnableFormatDetection
-				);
-			}
-			
+			input_->EnableVideoInput(
+				displayMode_->GetDisplayMode(),
+				pixelFormat_,
+				bmdVideoInputEnableFormatDetection
+			);
 
 
             input_->FlushStreams();
@@ -268,7 +262,7 @@ namespace klinker
 
             // Calculate the data size.
             auto size = videoFrame->GetRowBytes() * videoFrame->GetHeight();
-            //assert(size == CalculateFrameDataSize());
+            assert(size == CalculateFrameDataSize());
 
             // Retrieve the data pointer.
             std::uint8_t* source;
@@ -308,6 +302,8 @@ namespace klinker
         IDeckLinkInput* input_ = nullptr;
         IDeckLinkDisplayMode* displayMode_ = nullptr;
 
+		BMDPixelFormat pixelFormat_ = BMDPixelFormat::bmdFormat8BitYUV;
+
         std::queue<FrameData> frameQueue_;
         mutable std::mutex mutex_;
 
@@ -335,8 +331,10 @@ namespace klinker
             return bcdTime;
         }
 
-        bool InitializeInput(int deviceIndex, int formatIndex)
+        bool InitializeInput(int deviceIndex, int formatIndex, BMDPixelFormat pixFormat)
         {
+			this->pixelFormat_ = pixFormat;
+
             // Device iterator
             IDeckLinkIterator* iterator;
             auto res = CoCreateInstance(
@@ -411,7 +409,7 @@ namespace klinker
             // Enable the video input.
             res = input_->EnableVideoInput(
                 displayMode_->GetDisplayMode(),
-                bmdFormat8BitYUV,
+				pixelFormat_,
                 bmdVideoInputEnableFormatDetection
             );
 

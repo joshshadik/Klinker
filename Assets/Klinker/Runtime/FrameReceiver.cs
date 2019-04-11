@@ -17,6 +17,8 @@ namespace Klinker
         [SerializeField] int _deviceSelection = 0;
         [SerializeField, Range(1, 6)] int _queueLength = 3;
 
+        [SerializeField] BMDPixelFormat _pixelFormat = BMDPixelFormat.bmdFormat8BitYUV;
+
         #endregion
 
         #region Target settings
@@ -46,7 +48,7 @@ namespace Klinker
 
         #region Runtime properties
 
-        public RenderTexture _receivedTexture;
+        RenderTexture _receivedTexture;
 
         public Texture receivedTexture { get {
             return _targetTexture != null ? _targetTexture : _receivedTexture;
@@ -141,7 +143,7 @@ namespace Klinker
 
         void Start()
         {
-            _plugin = new ReceiverPlugin(_deviceSelection, 0);
+            _plugin = new ReceiverPlugin(_deviceSelection, 0, _pixelFormat);
             _upsampler = new Material(Shader.Find("Hidden/Klinker/Upsampler"));
             _dropDetector = new DropDetector(gameObject.name);
         }
@@ -153,6 +155,7 @@ namespace Klinker
             Util.Destroy(_receivedTexture);
             Util.Destroy(_upsampler);
         }
+        
 
         void Update()
         {
@@ -164,8 +167,7 @@ namespace Klinker
             // Renew texture objects when the frame dimensions were changed.
             var dimensions = _plugin.FrameDimensions;
             if (_sourceTexture != null &&
-                (_sourceTexture.width != dimensions.x ||
-                 _sourceTexture.height != dimensions.y))
+                !DimensionsMatch(dimensions))
             {
                 Util.Destroy(_sourceTexture);
                 Util.Destroy(_receivedTexture);
@@ -176,10 +178,23 @@ namespace Klinker
             // Source texture lazy initialization
             if (_sourceTexture == null)
             {
-                _sourceTexture = new Texture2D(
-                    dimensions.x, dimensions.y,
-                    TextureFormat.BGRA32, false
-                );
+                switch(_pixelFormat)
+                {
+                    case BMDPixelFormat.bmdFormat8BitYUV:
+                        _sourceTexture = new Texture2D(
+                            dimensions.x / 2, dimensions.y,
+                            TextureFormat.RGBA32, false
+                        );
+                        break;
+
+                    case BMDPixelFormat.bmdFormat8BitBGRA:
+                        _sourceTexture = new Texture2D(
+                            dimensions.x, dimensions.y,
+                            TextureFormat.BGRA32, false
+                        );
+                        break;
+                }
+
                 _sourceTexture.filterMode = FilterMode.Point;
             }
 
@@ -191,14 +206,34 @@ namespace Klinker
             // Receiver texture lazy initialization
             if (_targetTexture == null && _receivedTexture == null)
             {
-                _receivedTexture = new RenderTexture(dimensions.x, dimensions.y, 0, RenderTextureFormat.BGRA32);
+                switch(_pixelFormat)
+                {
+                    case BMDPixelFormat.bmdFormat8BitYUV:
+                        _receivedTexture = new RenderTexture(dimensions.x, dimensions.y, 0);
+                        break;
+
+                    case BMDPixelFormat.bmdFormat8BitBGRA:
+                        _receivedTexture = new RenderTexture(dimensions.x, dimensions.y, 0, RenderTextureFormat.BGRA32);
+                        break;
+                }
+                
                 _receivedTexture.wrapMode = TextureWrapMode.Clamp;
             }
 
             // Chroma upsampling
             var receiver = _targetTexture != null ? _targetTexture : _receivedTexture;
             var pass = _plugin.IsProgressive ? 0 : 1 + _fieldCount;
-            Graphics.Blit(_sourceTexture, receiver);
+
+            switch(_pixelFormat)
+            {
+                case BMDPixelFormat.bmdFormat8BitYUV:
+                    Graphics.Blit(_sourceTexture, receiver, _upsampler, pass);
+                    break;
+
+                case BMDPixelFormat.bmdFormat8BitBGRA:
+                    Graphics.Blit(_sourceTexture, receiver);
+                    break;
+            }
 
 #if UNITY_2018_3_OR_NEWER
                 receiver.IncrementUpdateCount();
@@ -219,6 +254,20 @@ namespace Klinker
             }
 
             _dropDetector.Update(_plugin.DropCount);
+        }
+
+        bool DimensionsMatch(Vector2Int dimensions)
+        {
+            switch(_pixelFormat)
+            {
+                case BMDPixelFormat.bmdFormat8BitYUV:
+                    return (_sourceTexture.width == dimensions.x / 2 && _sourceTexture.height == dimensions.y);
+
+                case BMDPixelFormat.bmdFormat8BitBGRA:
+                    return (_sourceTexture.width == dimensions.x && _sourceTexture.height == dimensions.y);
+            }
+
+            return false;
         }
 
         #endregion

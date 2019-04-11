@@ -11,6 +11,7 @@ namespace Klinker
     public sealed class FrameReceiverEditor : Editor
     {
         SerializedProperty _deviceSelection;
+        SerializedProperty _pixelFormat;
         SerializedProperty _queueLength;
         SerializedProperty _targetTexture;
         SerializedProperty _targetRenderer;
@@ -29,6 +30,7 @@ namespace Klinker
         void OnEnable()
         {
             _deviceSelection = serializedObject.FindProperty("_deviceSelection");
+            _pixelFormat = serializedObject.FindProperty("_pixelFormat");
             _queueLength = serializedObject.FindProperty("_queueLength");
             _targetTexture = serializedObject.FindProperty("_targetTexture");
             _targetRenderer = serializedObject.FindProperty("_targetRenderer");
@@ -54,6 +56,8 @@ namespace Klinker
             {
                 EditorGUILayout.HelpBox("No capture device found.", MessageType.Info);
             }
+
+            EditorGUILayout.PropertyField(_pixelFormat);
 
             EditorGUILayout.PropertyField(_queueLength);
 

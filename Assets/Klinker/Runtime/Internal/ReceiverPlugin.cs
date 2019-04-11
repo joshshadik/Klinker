@@ -7,14 +7,21 @@ using System.Runtime.InteropServices;
 
 namespace Klinker
 {
+    enum BMDPixelFormat
+    {
+        bmdFormat8BitYUV	= 0x32767579,
+        bmdFormat8BitBGRA	= 0x42475241,
+    }
+
+
     // Wrapper class for native plugin receiver functions
     sealed class ReceiverPlugin : IDisposable
     {
         #region Disposable pattern
 
-        public ReceiverPlugin(int device, int format)
+        public ReceiverPlugin(int device, int format, BMDPixelFormat pixFormat)
         {
-            _plugin = CreateReceiver(device, format);
+            _plugin = CreateReceiver(device, format, (int)pixFormat);
             CheckError();
         }
 
@@ -110,7 +117,7 @@ namespace Klinker
         IntPtr _plugin;
 
         [DllImport("Klinker")]
-        static extern IntPtr CreateReceiver(int device, int format);
+        static extern IntPtr CreateReceiver(int device, int format, int pixFormat);
 
         [DllImport("Klinker")]
         static extern void DestroyReceiver(IntPtr receiver);

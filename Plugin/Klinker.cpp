@@ -24,7 +24,7 @@ namespace
 
             // Check if the size of the data matches.
             auto dataSize = params->width * params->height * params->bpp;
-            //if (receiver->CalculateFrameDataSize() != dataSize) return;
+            if (receiver->CalculateFrameDataSize() != dataSize) return;
 
             // Lock the frame data for the update.
             params->texData = const_cast<uint8_t*>(receiver->LockOldestFrameData());
@@ -48,7 +48,7 @@ namespace
 
             // Check if the size of the data matches.
             auto dataSize = params->width * params->height * params->bpp;
-            //if (receiver->CalculateFrameDataSize() != dataSize) return;
+            if (receiver->CalculateFrameDataSize() != dataSize) return;
 
             // Lock the frame data for the update.
             params->texData = const_cast<uint8_t*>(receiver->LockOldestFrameData());
@@ -97,11 +97,11 @@ extern "C" int UNITY_INTERFACE_EXPORT RetrieveOutputFormatNames(int deviceIndex,
 
 #pragma region Receiver plugin functions
 
-extern "C" void UNITY_INTERFACE_EXPORT * CreateReceiver(int device, int format)
+extern "C" void UNITY_INTERFACE_EXPORT * CreateReceiver(int device, int format, int pixFormat)
 {
     auto instance = new klinker::Receiver();
     receiverMap_.Add(instance);
-    instance->Start(device, format);
+    instance->Start(device, format, pixFormat);
     return instance;
 }
 
