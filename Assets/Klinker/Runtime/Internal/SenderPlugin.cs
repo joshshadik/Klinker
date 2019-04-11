@@ -1,9 +1,15 @@
 // Klinker - Blackmagic DeckLink plugin for Unity
 // https://github.com/keijiro/Klinker
 
-using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
+#if UNITY_2018_3_OR_NEWER
+using Unity.Collections;
+#else
+using UnityEngine.Collections;
+#endif
+
+
+
 using System;
 using System.Runtime.InteropServices;
 
@@ -80,11 +86,16 @@ namespace Klinker
 
         #region Public methods
 
-        public unsafe void FeedFrame<T>(NativeArray<T> data, long timecode) where T : struct
+        public unsafe void FeedFrame(byte[] data, long timecode)
         {
+            GCHandle pinnedArray = GCHandle.Alloc(data, GCHandleType.Pinned);
+            IntPtr pointer = pinnedArray.AddrOfPinnedObject();
+
             var bcd = Util.FlicksToBcdTimecode(timecode, FrameDuration);
-            FeedFrameToSender(_plugin, (IntPtr)data.GetUnsafeReadOnlyPtr(), bcd);
+            FeedFrameToSender(_plugin, pointer, bcd);
             CheckError();
+
+            pinnedArray.Free();
         }
 
         public void WaitCompletion(long frameNumber)

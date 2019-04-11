@@ -24,7 +24,7 @@ namespace
 
             // Check if the size of the data matches.
             auto dataSize = params->width * params->height * params->bpp;
-            if (receiver->CalculateFrameDataSize() != dataSize) return;
+            //if (receiver->CalculateFrameDataSize() != dataSize) return;
 
             // Lock the frame data for the update.
             params->texData = const_cast<uint8_t*>(receiver->LockOldestFrameData());
@@ -33,6 +33,30 @@ namespace
         {
             // UpdateTextureEnd
             auto params = reinterpret_cast<UnityRenderingExtTextureUpdateParamsV2*>(data);
+            auto receiver = receiverMap_[params->userData];
+            if (receiver == nullptr) return;
+
+            // Unlock the frame data if it seems to be locked.
+            if (params->texData != nullptr) receiver->UnlockOldestFrameData();
+        }
+        else if(event == kUnityRenderingExtEventUpdateTextureBegin)
+        {
+            // UpdateTextureBegin
+            auto params = reinterpret_cast<UnityRenderingExtTextureUpdateParams*>(data);
+            auto receiver = receiverMap_[params->userData];
+            if (receiver == nullptr) return;
+
+            // Check if the size of the data matches.
+            auto dataSize = params->width * params->height * params->bpp;
+            //if (receiver->CalculateFrameDataSize() != dataSize) return;
+
+            // Lock the frame data for the update.
+            params->texData = const_cast<uint8_t*>(receiver->LockOldestFrameData());
+        }
+        else if (event == kUnityRenderingExtEventUpdateTextureEnd)
+        {
+            // UpdateTextureEnd
+            auto params = reinterpret_cast<UnityRenderingExtTextureUpdateParams*>(data);
             auto receiver = receiverMap_[params->userData];
             if (receiver == nullptr) return;
 

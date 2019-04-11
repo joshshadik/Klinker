@@ -46,7 +46,7 @@ namespace Klinker
 
         #region Runtime properties
 
-        RenderTexture _receivedTexture;
+        public RenderTexture _receivedTexture;
 
         public Texture receivedTexture { get {
             return _targetTexture != null ? _targetTexture : _receivedTexture;
@@ -131,7 +131,7 @@ namespace Klinker
 
         ReceiverPlugin _plugin;
         Material _upsampler;
-        Texture2D _sourceTexture;
+        public Texture2D _sourceTexture;
         MaterialPropertyBlock _propertyBlock;
         DropDetector _dropDetector;
 
@@ -164,7 +164,7 @@ namespace Klinker
             // Renew texture objects when the frame dimensions were changed.
             var dimensions = _plugin.FrameDimensions;
             if (_sourceTexture != null &&
-                (_sourceTexture.width != dimensions.x / 2 ||
+                (_sourceTexture.width != dimensions.x ||
                  _sourceTexture.height != dimensions.y))
             {
                 Util.Destroy(_sourceTexture);
@@ -177,8 +177,8 @@ namespace Klinker
             if (_sourceTexture == null)
             {
                 _sourceTexture = new Texture2D(
-                    dimensions.x / 2, dimensions.y,
-                    TextureFormat.RGBA32, false
+                    dimensions.x, dimensions.y,
+                    TextureFormat.BGRA32, false
                 );
                 _sourceTexture.filterMode = FilterMode.Point;
             }
@@ -191,15 +191,20 @@ namespace Klinker
             // Receiver texture lazy initialization
             if (_targetTexture == null && _receivedTexture == null)
             {
-                _receivedTexture = new RenderTexture(dimensions.x, dimensions.y, 0);
+                _receivedTexture = new RenderTexture(dimensions.x, dimensions.y, 0, RenderTextureFormat.BGRA32);
                 _receivedTexture.wrapMode = TextureWrapMode.Clamp;
             }
 
             // Chroma upsampling
             var receiver = _targetTexture != null ? _targetTexture : _receivedTexture;
             var pass = _plugin.IsProgressive ? 0 : 1 + _fieldCount;
-            Graphics.Blit(_sourceTexture, receiver, _upsampler, pass);
-            receiver.IncrementUpdateCount();
+            Graphics.Blit(_sourceTexture, receiver);
+
+#if UNITY_2018_3_OR_NEWER
+                receiver.IncrementUpdateCount();
+#else
+                receiver.imageContentsHash = new Hash128((uint)(Time.time * 1234.0f),(uint) Mathf.Abs(receiver.GetInstanceID()), (uint)Time.time, (uint)(Time.time * 230.0f));
+#endif
 
             // Renderer override
             if (_targetRenderer != null)

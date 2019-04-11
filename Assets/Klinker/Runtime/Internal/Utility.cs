@@ -126,9 +126,15 @@ namespace Klinker
         {
             if (_commandBuffer == null) _commandBuffer = new CommandBuffer();
 
+#if UNITY_2018_3_OR_NEWER
             _commandBuffer.IssuePluginCustomTextureUpdateV2(callback, texture, userData);
             Graphics.ExecuteCommandBuffer(_commandBuffer);
             texture.IncrementUpdateCount();
+#else
+            _commandBuffer.IssuePluginCustomTextureUpdate(callback, texture, userData);
+            Graphics.ExecuteCommandBuffer(_commandBuffer);
+            texture.imageContentsHash = new Hash128((uint)(Time.time * 1234.0f),(uint) Mathf.Abs(texture.GetInstanceID()), (uint)Time.time, (uint)(Time.time * 230.0f));
+#endif
 
             _commandBuffer.Clear();
         }

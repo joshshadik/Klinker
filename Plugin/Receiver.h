@@ -219,11 +219,33 @@ namespace klinker
 
             // Change the video input format as notified.
             input_->PauseStreams();
-            input_->EnableVideoInput(
-                displayMode_->GetDisplayMode(),
-                bmdFormat8BitYUV,
-                bmdVideoInputEnableFormatDetection
-            );
+
+			IDeckLinkDisplayMode* displayMode = NULL;
+			BMDDisplayModeSupport support;
+			bool supported = input_->DoesSupportVideoMode(displayMode_->GetDisplayMode(),
+				bmdFormat8BitYUV,
+				bmdVideoInputEnableFormatDetection, &support, &displayMode);
+
+
+			if (supported)
+			{
+				input_->EnableVideoInput(
+					displayMode_->GetDisplayMode(),
+					bmdFormat8BitYUV,
+					bmdVideoInputEnableFormatDetection
+				);
+			}
+			else
+			{
+				input_->EnableVideoInput(
+					displayMode_->GetDisplayMode(),
+					bmdFormat8BitBGRA,
+					bmdVideoInputEnableFormatDetection
+				);
+			}
+			
+
+
             input_->FlushStreams();
             input_->StartStreams();
 
@@ -246,7 +268,7 @@ namespace klinker
 
             // Calculate the data size.
             auto size = videoFrame->GetRowBytes() * videoFrame->GetHeight();
-            assert(size == CalculateFrameDataSize());
+            //assert(size == CalculateFrameDataSize());
 
             // Retrieve the data pointer.
             std::uint8_t* source;

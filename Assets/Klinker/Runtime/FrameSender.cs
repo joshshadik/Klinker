@@ -6,6 +6,12 @@ using UnityEngine.Rendering;
 using System.Collections;
 using System.Collections.Generic;
 
+#if UNITY_2018_3_OR_NEWER
+using Unity.Collections;
+#else
+using UnityEngine.Collections;
+#endif
+
 namespace Klinker
 {
     // Frame sender class
@@ -116,11 +122,18 @@ namespace Klinker
 
         #region Frame readback queue
 
-        Queue<AsyncGPUReadbackRequest> _frameQueue = new Queue<AsyncGPUReadbackRequest>();
+        Queue<byte[]> _frameQueue = new Queue<byte[]>();
 
         void PushFrame(RenderTexture frame)
         {
-            _frameQueue.Enqueue(AsyncGPUReadback.Request(frame));
+            var currentActive = RenderTexture.active;
+            RenderTexture.active = frame;
+
+            Texture2D texture = new Texture2D(frame.width, frame.height);
+            texture.ReadPixels(new Rect(0, 0, frame.width, frame.height), 0, 0);
+            _frameQueue.Enqueue(texture.GetRawTextureData());
+
+            RenderTexture.active = currentActive;
         }
 
         void ProcessFrameQueue(bool sync)
@@ -129,27 +142,8 @@ namespace Klinker
             {
                 var frame = _frameQueue.Peek();
 
-                // Skip error frames.
-                if (frame.hasError)
-                {
-                    Debug.LogWarning("GPU readback error was detected.");
-                    _frameQueue.Dequeue();
-                    continue;
-                }
-
-                if (sync)
-                {
-                    // sync = on: Wait for completion every time.
-                    frame.WaitForCompletion();
-                }
-                else
-                {
-                    // sync = off: Break if the request hasn't been completed.
-                    if (!frame.done) break;
-                }
-
                 // Feed the frame data to the plugin.
-                _plugin.FeedFrame(frame.GetData<byte>(), timecodeFlicks);
+                _plugin.FeedFrame(frame, timecodeFlicks);
                 _frameCount++;
 
                 _frameQueue.Dequeue();

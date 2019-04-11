@@ -71,8 +71,10 @@ namespace Klinker
                 _material.SetTexture("_MainTex", _sourceTexture);
 
                 // Register the camera render callback.
+#if UNITY_2018_3_OR_NEWER
                 UnityEngine.Experimental.Rendering.RenderPipeline.
                     beginCameraRendering += OnBeginCameraRendering; // SRP
+#endif
                 Camera.onPreCull += OnBeginCameraRendering; // Legacy
             }
         }
@@ -82,8 +84,10 @@ namespace Klinker
             if (_mesh != null)
             {
                 // Unregister the camera render callback.
+#if UNITY_2018_3_OR_NEWER
                 UnityEngine.Experimental.Rendering.RenderPipeline.
                     beginCameraRendering -= OnBeginCameraRendering; // SRP
+#endif
                 Camera.onPreCull -= OnBeginCameraRendering; // Legacy
 
                 // Destroy temporary objects.
